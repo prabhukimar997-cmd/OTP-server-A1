@@ -20,7 +20,7 @@ try {
             admin.initializeApp({
                 credential: admin.credential.cert({ projectId, clientEmail, privateKey })
             });
-            console.log("✅ Firebase Admin Active");
+            console.log("✅ Firebase Admin Initialized Successfully");
         }
     }
 } catch (error) {
@@ -30,48 +30,69 @@ try {
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx-qPbVe4hZAbUW18Soj13cSkOQi6qaREJvUc5CZ6hioJuiJ-yEw5XTdqEtyruNfw4h_g/exec";
 let otpStore = {};
 
-// --- API: Send OTP (High-End Professional UI) ---
+// --- FIX: Home Route (Ab "Cannot GET /" nahi aayega) ---
+app.get('/', (req, res) => {
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Bot Dock Engine</title>
+            <style>
+                body { margin: 0; font-family: -apple-system, sans-serif; background: #fafafa; display: flex; justify-content: center; align-items: center; height: 100vh; color: #111; }
+                .card { background: white; padding: 40px; border-radius: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); text-align: center; max-width: 350px; border: 1px solid #f0f0f0; }
+                .logo { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 20px; }
+                .status { color: #00b894; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+                .dot { width: 8px; height: 8px; background: #00b894; border-radius: 50%; display: inline-block; }
+                .footer { margin-top: 30px; font-size: 12px; color: #999; }
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <div class="logo">BOT DOCK</div>
+                <div class="status"><span class="dot"></span> Operational</div>
+                <p style="font-size: 14px; color: #666; margin-top: 15px;">Secure Identity & OTP API for high-end applications.</p>
+                <div class="footer">© 2026 Bot Dock, Inc.</div>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+// --- API: Send OTP ---
 app.get('/send-otp', async (req, res) => {
     const email = req.query.email;
-    if (!email) return res.status(400).json({ status: "error" });
+    if (!email) return res.status(400).json({ status: "error", message: "Email required" });
 
     const otp = Math.floor(100000 + Math.random() * 900000);
     otpStore[email] = { otp, createdAt: Date.now() };
 
     setTimeout(() => { if (otpStore[email]) delete otpStore[email]; }, 5 * 60 * 1000);
 
-    // --- Silicon Valley Style Minimalist Template ---
     const htmlTemplate = `
     <!DOCTYPE html>
     <html>
     <head>
         <style>
             .container { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a; line-height: 1.6; }
-            .logo { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 40px; color: #000; text-align: left; }
+            .logo { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 40px; color: #000; }
             .heading { font-size: 24px; font-weight: 600; margin-bottom: 24px; color: #111; letter-spacing: -0.2px; }
-            .body-text { font-size: 16px; color: #444; margin-bottom: 32px; }
             .otp-container { background: #f4f4f7; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 32px; }
-            .otp-code { font-family: 'SF Mono', 'Roboto Mono', Menlo, monospace; font-size: 36px; font-weight: 700; color: #0062ff; letter-spacing: 6px; }
+            .otp-code { font-family: 'SF Mono', monospace; font-size: 36px; font-weight: 700; color: #0062ff; letter-spacing: 6px; }
             .footer { font-size: 13px; color: #888; border-top: 1px solid #eee; padding-top: 24px; margin-top: 40px; }
-            .footer-brand { font-weight: 600; color: #111; margin-bottom: 4px; display: block; }
         </style>
     </head>
     <body>
         <div class="container">
             <div class="logo">BOT DOCK</div>
             <h1 class="heading">Confirm your email address</h1>
-            <p class="body-text">Please use the following verification code to complete your login. To maintain account security, do not share this code with anyone.</p>
-            
+            <p>Please use the following verification code to complete your login. Do not share this code with anyone.</p>
             <div class="otp-container">
                 <div class="otp-code">${otp}</div>
             </div>
-            
-            <p class="body-text" style="font-size: 14px; color: #666;">This code will expire in 5 minutes. If you did not request this code, you can safely ignore this email.</p>
-            
+            <p style="font-size: 14px; color: #666;">This code will expire in 5 minutes.</p>
             <div class="footer">
-                <span class="footer-brand">Bot Dock</span>
-                <div>&copy; 2024 Bot Dock, Inc. All rights reserved.</div>
-                <div style="margin-top: 8px;">San Francisco, CA &bull; Premium Identity Security</div>
+                <div style="font-weight: 600; color: #111;">Bot Dock</div>
+                <div>&copy; 2026 Bot Dock, Inc. &bull; San Francisco, CA</div>
             </div>
         </div>
     </body>
@@ -80,11 +101,7 @@ app.get('/send-otp', async (req, res) => {
 
     try {
         await axios.get(GOOGLE_SCRIPT_URL, {
-            params: { 
-                email, 
-                subject: `${otp} is your Bot Dock verification code`, // Crisp Subject Line
-                body: htmlTemplate 
-            }
+            params: { email, subject: `${otp} is your verification code`, body: htmlTemplate }
         });
         res.json({ status: "success" });
     } catch (error) {
