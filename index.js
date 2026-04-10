@@ -27,7 +27,7 @@ try {
     console.error("❌ Firebase Error:", error.message);
 }
 
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx-qPbVe4hZAbUW18Soj13cSkOQi6qaREJvUc5CZ6hioJuiJ-yEw5XTdqEtyruNfw4h_g/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxEdamehSYY2plAkNIBuWJ_sxwxBV6ErCCe98N5V4Unj7N2FJgyVls4mPHaSHxCDioi/exec";
 let otpStore = {};
 
 // --- FIX: Home Route (Ab "Cannot GET /" nahi aayega) ---
