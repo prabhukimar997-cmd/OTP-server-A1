@@ -23,7 +23,7 @@ try {
             });
             console.log("✅ Firebase Admin Initialized Successfully");
         }
-        db = admin.firestore(); // Firestore instance
+        db = admin.firestore();
     }
 } catch (error) {
     console.error("❌ Firebase Error:", error.message);
@@ -32,7 +32,7 @@ try {
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxEdamehSYY2plAkNIBuWJ_sxwxBV6ErCCe98N5V4Unj7N2FJgyVls4mPHaSHxCDioi/exec";
 let otpStore = {};
 
-// --- 2. Home Route (Landing Page) ---
+// --- 2. Home Route (Bot Dock Engine UI) ---
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -51,15 +51,14 @@ app.get('/', (req, res) => {
             <div class="card">
                 <div class="logo">BOT DOCK</div>
                 <div class="status"><span class="dot"></span> Operational</div>
-                <p style="font-size: 14px; color: #666; margin-top: 15px;">Secure Identity & Cloudflare Worker Engine is active.</p>
-                <div style="font-size: 12px; color: #999; margin-top: 20px;">© 2026 Bot Dock, Inc.</div>
+                <p style="font-size: 14px; color: #666; margin-top: 15px;">OTP & Cloudflare Logic Engine is running.</p>
             </div>
         </body>
         </html>
     `);
 });
 
-// --- 3. API: Send OTP ---
+// --- 3. API: Send OTP (Original Premium UI Restored) ---
 app.get('/send-otp', async (req, res) => {
     const email = req.query.email;
     if (!email) return res.status(400).json({ status: "error", message: "Email required" });
@@ -69,13 +68,36 @@ app.get('/send-otp', async (req, res) => {
 
     setTimeout(() => { if (otpStore[email]) delete otpStore[email]; }, 5 * 60 * 1000);
 
+    // --- AAPKA ORIGINAL PREMIUM UI TEMPLATE ---
     const htmlTemplate = `
-    <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-        <h2 style="color: #111;">Verification Code</h2>
-        <p>Your code is:</p>
-        <div style="font-size: 32px; font-weight: bold; color: #0062ff; letter-spacing: 5px;">${otp}</div>
-        <p style="color: #666;">Expires in 5 minutes.</p>
-    </div>`;
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            .container { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a; line-height: 1.6; }
+            .logo { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 40px; color: #000; }
+            .heading { font-size: 24px; font-weight: 600; margin-bottom: 24px; color: #111; letter-spacing: -0.2px; }
+            .otp-container { background: #f4f4f7; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 32px; }
+            .otp-code { font-family: 'SF Mono', monospace; font-size: 36px; font-weight: 700; color: #0062ff; letter-spacing: 6px; }
+            .footer { font-size: 13px; color: #888; border-top: 1px solid #eee; padding-top: 24px; margin-top: 40px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="logo">BOT DOCK</div>
+            <h1 class="heading">Confirm your email address</h1>
+            <p>Please use the following verification code to complete your login. Do not share this code with anyone.</p>
+            <div class="otp-container">
+                <div class="otp-code">${otp}</div>
+            </div>
+            <p style="font-size: 14px; color: #666;">This code will expire in 5 minutes.</p>
+            <div class="footer">
+                <div style="font-weight: 600; color: #111;">Bot Dock</div>
+                <div>&copy; 2026 Bot Dock, Inc. &bull; San Francisco, CA</div>
+            </div>
+        </div>
+    </body>
+    </html>`;
 
     try {
         await axios.get(GOOGLE_SCRIPT_URL, {
@@ -116,11 +138,10 @@ app.post('/upload-worker', async (req, res) => {
     try {
         const { email, fileName, rawCode } = req.body;
 
-        if (!email) return res.status(400).json({ error: "User Email is required" });
-        if (!rawCode) return res.status(400).json({ error: "JS Code is required" });
-        if (!db) return res.status(500).json({ error: "Database Connection Error" });
+        if (!email || !rawCode) return res.status(400).json({ error: "Email and JS Code required" });
+        if (!db) return res.status(500).json({ error: "Firebase DB connection fail" });
 
-        // JavaScript ko Cloudflare format (ES Modules) mein wrap karna
+        // Cloudflare format logic
         const cloudflareFormat = `
 export default {
   async fetch(request, env, ctx) {
@@ -132,12 +153,11 @@ export default {
   }
 };`;
 
-        // Firebase Firestore: User ke apne collection mein save karna
-        // Path: users -> {email} -> workers -> {fileName}
-        const workerDoc = db.collection('users').doc(email).collection('workers').doc(fileName || `script-${Date.now()}`);
+        // Firebase Path: users > {user_email} > workers > {file_name}
+        const workerDoc = db.collection('users').doc(email).collection('workers').doc(fileName || `worker-${Date.now()}`);
 
         await workerDoc.set({
-            fileName: fileName || "Untitled",
+            fileName: fileName || "Untitled Worker",
             originalCode: rawCode,
             cloudflareCode: cloudflareFormat,
             createdAt: admin.firestore.FieldValue.serverTimestamp()
@@ -145,7 +165,7 @@ export default {
 
         res.json({
             status: "success",
-            message: `Worker saved for ${email}`,
+            message: `Worker saved successfully for ${email}`,
             preview: cloudflareFormat
         });
 
@@ -154,21 +174,5 @@ export default {
     }
 });
 
-// --- 6. API: Get User Workers (Optional - Saare saved codes dekhne ke liye) ---
-app.get('/get-my-workers', async (req, res) => {
-    try {
-        const { email } = req.query;
-        if (!email) return res.status(400).json({ error: "Email required" });
-
-        const snapshot = await db.collection('users').doc(email).collection('workers').get();
-        const workers = [];
-        snapshot.forEach(doc => workers.push(doc.data()));
-
-        res.json({ status: "success", workers });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, '0.0.0.0', () => console.log(`Bot Dock Engine Started with Cloudflare Converter`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Bot Dock Engine Started with Premium UI`));
