@@ -8,22 +8,26 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// --- 1. Firebase Admin Connection ---
-let db;
+// --- 1. Firebase Admin Connection (Firestore + Realtime Database) ---
+let db; // Firestore
+let rtdb; // Realtime Database
 try {
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const databaseURL = process.env.FIREBASE_DATABASE_URL; // Render settings me add karein
     let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
     if (projectId && clientEmail && privateKey) {
         privateKey = privateKey.replace(/\\n/g, '\n');
         if (!admin.apps.length) {
             admin.initializeApp({
-                credential: admin.credential.cert({ projectId, clientEmail, privateKey })
+                credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
+                databaseURL: databaseURL // Dashboard sync ke liye zaroori hai
             });
-            console.log("✅ Firebase Admin Initialized Successfully");
+            console.log("✅ Firebase Admin (Full) Initialized Successfully");
         }
         db = admin.firestore();
+        rtdb = admin.database();
     }
 } catch (error) {
     console.error("❌ Firebase Error:", error.message);
@@ -51,14 +55,14 @@ app.get('/', (req, res) => {
             <div class="card">
                 <div class="logo">BOT DOCK</div>
                 <div class="status"><span class="dot"></span> Operational</div>
-                <p style="font-size: 14px; color: #666; margin-top: 15px;">OTP & Cloudflare Logic Engine is running.</p>
+                <p style="font-size: 14px; color: #666; margin-top: 15px;">OTP & JS Conversion Engine is running.</p>
             </div>
         </body>
         </html>
     `);
 });
 
-// --- 3. API: Send OTP (Original Premium UI Restored) ---
+// --- 3. API: Send OTP (Premium Email UI) ---
 app.get('/send-otp', async (req, res) => {
     const email = req.query.email;
     if (!email) return res.status(400).json({ status: "error", message: "Email required" });
@@ -68,7 +72,6 @@ app.get('/send-otp', async (req, res) => {
 
     setTimeout(() => { if (otpStore[email]) delete otpStore[email]; }, 5 * 60 * 1000);
 
-    // --- AAPKA ORIGINAL PREMIUM UI TEMPLATE ---
     const htmlTemplate = `
     <!DOCTYPE html>
     <html>
@@ -78,13 +81,13 @@ app.get('/send-otp', async (req, res) => {
             .logo { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 40px; color: #000; }
             .heading { font-size: 24px; font-weight: 600; margin-bottom: 24px; color: #111; letter-spacing: -0.2px; }
             .otp-container { background: #f4f4f7; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 32px; }
-            .otp-code { font-family: 'SF Mono', monospace; font-size: 36px; font-weight: 700; color: #0062ff; letter-spacing: 6px; }
+            .otp-code { font-family: 'SF Mono', monospace; font-size: 36px; font-weight: 700; color: #f97316; letter-spacing: 6px; }
             .footer { font-size: 13px; color: #888; border-top: 1px solid #eee; padding-top: 24px; margin-top: 40px; }
         </style>
     </head>
     <body>
         <div class="container">
-            <div class="logo">BOT DOCK</div>
+            <div class="logo">BOT<span style="color:#f97316">DOCK</span></div>
             <h1 class="heading">Confirm your email address</h1>
             <p>Please use the following verification code to complete your login. Do not share this code with anyone.</p>
             <div class="otp-container">
@@ -92,7 +95,7 @@ app.get('/send-otp', async (req, res) => {
             </div>
             <p style="font-size: 14px; color: #666;">This code will expire in 5 minutes.</p>
             <div class="footer">
-                <div style="font-weight: 600; color: #111;">Bot Dock</div>
+                <div style="font-weight: 600; color: #111;">Bot Dock Cloud</div>
                 <div>&copy; 2026 Bot Dock, Inc. &bull; San Francisco, CA</div>
             </div>
         </div>
@@ -133,46 +136,58 @@ app.get('/verify-login', async (req, res) => {
     }
 });
 
-// --- 5. API: JS Converter & User Specific Save ---
-app.post('/upload-worker', async (req, res) => {
+// --- 5. API: JS Converter & Bot Deployment ---
+app.post('/deploy-bot-engine', async (req, res) => {
     try {
-        const { email, fileName, rawCode } = req.body;
+        const { userId, botId, token, name, commands } = req.body;
 
-        if (!email || !rawCode) return res.status(400).json({ error: "Email and JS Code required" });
-        if (!db) return res.status(500).json({ error: "Firebase DB connection fail" });
+        if (!botId || !token || !commands || !rtdb) {
+            return res.status(400).json({ status: "error", message: "Missing data or DB connection" });
+        }
 
-        // Cloudflare format logic
-        const cloudflareFormat = `
-export default {
-  async fetch(request, env, ctx) {
-    try {
-      ${rawCode}
-    } catch (err) {
-      return new Response(err.message, { status: 500 });
-    }
-  }
-};`;
+        // JS Code ko Cloudflare Workers ke liye convert/optimize karein
+        const optimizedCommands = commands.map(cmd => {
+            if (cmd.mode === 'js') {
+                // Node.js specific global variables ko block karein aur safe banayein
+                let safeJs = cmd.reply
+                    .replace(/process\./g, 'undefined.')
+                    .replace(/require/g, 'undefined');
 
-        // Firebase Path: users > {user_email} > workers > {file_name}
-        const workerDoc = db.collection('users').doc(email).collection('workers').doc(fileName || `worker-${Date.now()}`);
-
-        await workerDoc.set({
-            fileName: fileName || "Untitled Worker",
-            originalCode: rawCode,
-            cloudflareCode: cloudflareFormat,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
+                // Code ko ek async execution wrapper mein wrap karein
+                return {
+                    ...cmd,
+                    reply: `(async (ctx, bot) => { 
+                        try { 
+                            ${safeJs} 
+                        } catch(e) { 
+                            return bot.sendMessage(ctx.chat.id, "❌ JS Error: " + e.message); 
+                        } 
+                    })(ctx, bot)`
+                };
+            }
+            return cmd; // Normal text commands ko aise hi rehne dein
         });
 
-        res.json({
-            status: "success",
-            message: `Worker saved successfully for ${email}`,
-            preview: cloudflareFormat
+        // Realtime Database mein save karein (Dashboard sync ke liye)
+        await rtdb.ref(`bots/${botId}`).set({
+            owner: userId,
+            token: token,
+            name: name,
+            commands: optimizedCommands,
+            status: 'on',
+            updatedAt: Date.now()
+        });
+
+        res.json({ 
+            status: "success", 
+            message: "Bot commands optimized & saved!" 
         });
 
     } catch (error) {
+        console.error("Deploy Error:", error);
         res.status(500).json({ status: "error", message: error.message });
     }
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, '0.0.0.0', () => console.log(`Bot Dock Engine Started with Premium UI`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Bot Dock Engine Started with Premium UI & JS Converter`));
