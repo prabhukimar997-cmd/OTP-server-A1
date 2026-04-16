@@ -33,7 +33,7 @@ try {
     console.error("❌ Firebase Error:", error.message);
 }
 
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxEdamehSYY2plAkNIBuWJ_sxwxBV6ErCCe98N5V4Unj7N2FJgyVls4mPHaSHxCDioi/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx3bLy7Ta9_qrMwKZ8DPTuKobdLI5Na432y4_Qf_70QjDMCKVC_zLkZwzBTLJ9ayO6_7Q/exec";
 let otpStore = {};
 
 // --- 2. Home Route (Bot Dock Engine UI) ---
